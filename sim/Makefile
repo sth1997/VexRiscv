@@ -9,13 +9,13 @@ baz.elf: baz.o
 baz.hex: baz.elf
 	llvm-objcopy -O ihex $< $@
 
-genv: SetChip.v
+genv: baz.hex
 	cd ..; sbt "runMain set.Gen"
 
 gensim: genv
 	rm -f SetChip.v*.bin
 	cp ../SetChip.v*.bin . | true
-	verilator --trace -cc ../SetChip.v testbench-soc.cpp $(VERILATOR_FLAGS)
+	verilator --trace -cc ../SetChip.v --exe testbench-soc.cpp $(VERILATOR_FLAGS)
 
 compile: gensim
 	make -C obj_dir -f VSetChip.mk
