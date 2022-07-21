@@ -21,10 +21,10 @@ class SetInterPlugin extends Plugin[VexRiscv] {
     decoderService.add(
       key = M"0000000----------111-----0001011",
       List(
-        IS_SETINTER_D -> True,
-        RS1_USE -> True,
-        RS2_USE -> True,
-        RD_USE -> True
+        IS_SETINTER_D -> True
+        // RS1_USE -> True,
+        // RS2_USE -> True,
+        // RD_USE -> True
       )
     )
   }
@@ -43,11 +43,12 @@ class SetInterPlugin extends Plugin[VexRiscv] {
 
       // val test = RegInit(False)
       // when (input(IS_SETINTER_D)) {
-      //   // test := True
+      //   test := True
       //   decode.arbitration.haltItself := True
       //   when (!execute.arbitration.isValid && !memory.arbitration.isValid && !writeBack.arbitration.isValid) {
       //     insert(IS_SETINTER_E) := True
       //     decode.arbitration.haltItself := False
+      //     decode.arbitration.haltByOther := True
       //   }
       // }
     }
@@ -71,15 +72,15 @@ class SetInterPlugin extends Plugin[VexRiscv] {
       }
 
       when (state === State.P) {
-        // when (!memory.arbitration.isValid && !writeBack.arbitration.isValid) {
+        when (!memory.arbitration.isValid && !writeBack.arbitration.isValid) {
           state := State.L
-        // }
+        }
       }
 
       when (state === State.L) {
-        addrSrc1 := input(RS1).asUInt
-        addrSrc2 := input(RS2).asUInt
-        addrDest := input(RD).asUInt
+        addrSrc1 := input(RS1_E).asUInt
+        addrSrc2 := input(RS2_E).asUInt
+        addrDest := input(RD_E).asUInt
 
         state := State.S
       }

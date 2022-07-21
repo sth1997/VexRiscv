@@ -8,6 +8,8 @@ _start:
 	lui	a0, %hi(c)
 	addi	a0, a0, %lo(c)
 	setinter	a0, a1, a2
+_loop:
+	j _loop
 
 	.data
 	.globl	a
