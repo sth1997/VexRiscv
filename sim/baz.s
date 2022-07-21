@@ -8,6 +8,10 @@ _start:
 	lui	a0, %hi(c)
 	addi	a0, a0, %lo(c)
 	setinter	a0, a1, a2
+	lw	a1, 0(a0)
+	lw	a1, 4(a0)
+	lw	a1, 8(a0)
+	lw	a1, 12(a0)
 _loop:
 	j _loop
 

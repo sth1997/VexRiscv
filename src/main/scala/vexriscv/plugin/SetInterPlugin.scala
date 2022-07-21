@@ -9,7 +9,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
   object IS_SETINTER_E extends Stageable(Bool)
 
   object State extends SpinalEnum {
-    val IDLE, P, L, S, X_REQUESTED, X_LOADED, Y_REQUESTED, Y_LOADED, C, W, W_REQUESTED, F  = newElement()
+    val IDLE, P, L, S, X_REQUESTED, X_LOADED, Y_REQUESTED, Y_LOADED, C, W, W_REQUESTED, F_W, F  = newElement()
   }
 
   override def setup(pipeline: VexRiscv): Unit = {
@@ -149,7 +149,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
 
       when (state === State.Y_LOADED) {
         when ((xVal === -1) || (yVal === -1)) {
-          state := State.F
+          state := State.F_W
         } otherwise {
           state := State.C
         }
@@ -192,10 +192,23 @@ class SetInterPlugin extends Plugin[VexRiscv] {
         }
       }
 
+      when (state === State.F_W) {
+        dBusCmdValid := True
+        dBusCmdWR := True
+        dBusCmdAddr := addrDest
+        dBusCmdData := S(-1, 32 bits).asBits
+
+        state := State.F
+      }
+
       when (state === State.F) {
-        state := State.IDLE
-        decode.arbitration.haltByOther := False
-        execute.arbitration.haltItself := False
+        dBusCmdValid := False
+
+        when (dBus.cmd.ready) {
+          state := State.IDLE
+          decode.arbitration.haltByOther := False
+          execute.arbitration.haltItself := False
+        }
       }
 
     }
