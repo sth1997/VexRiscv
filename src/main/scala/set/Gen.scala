@@ -1,14 +1,14 @@
 package set
 
 import spinal.core._
+import spinal.lib._
+import spinal.lib.bus.misc.SizeMapping
+import spinal.lib.bus.simple.{PipelinedMemoryBus, PipelinedMemoryBusConfig}
+import spinal.lib.misc.HexTools
 import vexriscv._
 import vexriscv.plugin._
-import spinal.lib._
-import spinal.lib.bus.simple.PipelinedMemoryBusConfig
-import spinal.lib.bus.simple.PipelinedMemoryBus
+
 import scala.collection.mutable.ArrayBuffer
-import spinal.lib.bus.misc.SizeMapping
-import spinal.lib.misc.HexTools
 
 class SetChipMasterArbiter(pipelinedMemoryBusConfig : PipelinedMemoryBusConfig) extends Component {
   val io = new Bundle {
@@ -187,6 +187,8 @@ class SetChip extends Component {
             catchAddressMisaligned = false
           ),
           new SetInterPlugin,
+          new SetCountPlugin,
+          new SetDiffPlugin,
           new YamlPlugin("cpu0.yaml")
       )
     ))

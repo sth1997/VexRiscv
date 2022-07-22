@@ -1,19 +1,20 @@
-package vexriscv.plugin
+package set
 
 import spinal.core._
 import vexriscv._
+import vexriscv.plugin.{DBusSimplePlugin, Plugin}
 
 class SetInterPlugin extends Plugin[VexRiscv] {
 
   object IS_SETINTER_D extends Stageable(Bool)
+
   object IS_SETINTER_E extends Stageable(Bool)
 
   object State extends SpinalEnum {
-    val IDLE, P, L, S, X_REQUESTED, X_LOADED, Y_REQUESTED, Y_LOADED, C, W, W_REQUESTED, F_W, F  = newElement()
+    val IDLE, P, L, S, X_REQUESTED, X_LOADED, Y_REQUESTED, Y_LOADED, C, W, W_REQUESTED, F_W, F = newElement()
   }
 
   override def setup(pipeline: VexRiscv): Unit = {
-    import pipeline.config._
 
     val decoderService = pipeline.service(classOf[DecoderService])
     decoderService.addDefault(IS_SETINTER_D, False)
@@ -39,7 +40,6 @@ class SetInterPlugin extends Plugin[VexRiscv] {
     // execute.arbitration.haltItself := True
 
     decode plug new Area {
-      import decode._
 
       // val test = RegInit(False)
       // when (input(IS_SETINTER_D)) {
@@ -54,6 +54,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
     }
 
     execute plug new Area {
+
       import execute._
 
       val state = Reg(State)
@@ -62,22 +63,22 @@ class SetInterPlugin extends Plugin[VexRiscv] {
       val addrSrc2 = Reg(UInt(32 bits))
       val addrDest = Reg(UInt(32 bits))
 
-      when (input(IS_SETINTER_D)) {
-      // when (input(IS_SETINTER_E)) {
-        when (state === State.IDLE) {
+      when(input(IS_SETINTER_D)) {
+        // when (input(IS_SETINTER_E)) {
+        when(state === State.IDLE) {
           state := State.P
           decode.arbitration.haltByOther := True
           execute.arbitration.haltItself := True
         }
       }
 
-      when (state === State.P) {
-        when (!memory.arbitration.isValid && !writeBack.arbitration.isValid) {
+      when(state === State.P) {
+        when(!memory.arbitration.isValid && !writeBack.arbitration.isValid) {
           state := State.L
         }
       }
 
-      when (state === State.L) {
+      when(state === State.L) {
         addrSrc1 := input(RS1_E).asUInt
         addrSrc2 := input(RS2_E).asUInt
         addrDest := input(RD_E).asUInt
@@ -85,7 +86,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
         state := State.S
       }
 
-      when (state =/= State.IDLE) {
+      when(state =/= State.IDLE) {
         decode.arbitration.haltByOther := True
         execute.arbitration.haltItself := True
       }
@@ -101,16 +102,16 @@ class SetInterPlugin extends Plugin[VexRiscv] {
       val dBusCmdAddr = Reg(UInt(32 bits))
       val dBusCmdWR = Reg(Bool)
       val dBusCmdData = Reg(Bits(32 bits))
-      
 
-      when (state =/= State.IDLE) {
+
+      when(state =/= State.IDLE) {
         dBus.cmd.valid := dBusCmdValid
         dBus.cmd.payload.wr := dBusCmdWR
         dBus.cmd.payload.address := dBusCmdAddr
         dBus.cmd.payload.data := dBusCmdData
       }
 
-      when (state === State.S) {
+      when(state === State.S) {
         dBusCmdValid := True
         dBusCmdWR := False
         dBusCmdAddr := addrSrc1
@@ -119,17 +120,17 @@ class SetInterPlugin extends Plugin[VexRiscv] {
 
       }
 
-      when (state === State.X_REQUESTED) {
+      when(state === State.X_REQUESTED) {
         dBusCmdValid := False
 
-        when (dBus.rsp.ready) {
+        when(dBus.rsp.ready) {
           xVal := dBus.rsp.data.asSInt
 
           state := State.X_LOADED
         }
       }
 
-      when (state === State.X_LOADED) {
+      when(state === State.X_LOADED) {
         dBusCmdValid := True
         dBusCmdWR := False
         dBusCmdAddr := addrSrc2
@@ -137,41 +138,41 @@ class SetInterPlugin extends Plugin[VexRiscv] {
         state := State.Y_REQUESTED
       }
 
-      when (state === State.Y_REQUESTED) {
+      when(state === State.Y_REQUESTED) {
         dBusCmdValid := False
 
-        when (dBus.rsp.ready) {
+        when(dBus.rsp.ready) {
           yVal := dBus.rsp.data.asSInt
 
           state := State.Y_LOADED
         }
       }
 
-      when (state === State.Y_LOADED) {
-        when ((xVal === -1) || (yVal === -1)) {
+      when(state === State.Y_LOADED) {
+        when((xVal === -1) || (yVal === -1)) {
           state := State.F_W
         } otherwise {
           state := State.C
         }
       }
 
-      when (state === State.C) {
-        when (xVal === yVal) {
+      when(state === State.C) {
+        when(xVal === yVal) {
           state := State.W
         }
 
-        when (xVal < yVal) {
+        when(xVal < yVal) {
           addrSrc1 := addrSrc1 + 4
           state := State.S
         }
 
-        when (xVal > yVal) {
+        when(xVal > yVal) {
           addrSrc2 := addrSrc2 + 4
           state := State.S
         }
       }
 
-      when (state === State.W) {
+      when(state === State.W) {
         dBusCmdValid := True
         dBusCmdWR := True
         dBusCmdAddr := addrDest
@@ -180,10 +181,10 @@ class SetInterPlugin extends Plugin[VexRiscv] {
         state := State.W_REQUESTED
       }
 
-      when (state === State.W_REQUESTED) {
+      when(state === State.W_REQUESTED) {
         dBusCmdValid := False
 
-        when (dBus.cmd.ready) {
+        when(dBus.cmd.ready) {
           addrSrc1 := addrSrc1 + 4
           addrSrc2 := addrSrc2 + 4
           addrDest := addrDest + 4
@@ -192,7 +193,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
         }
       }
 
-      when (state === State.F_W) {
+      when(state === State.F_W) {
         dBusCmdValid := True
         dBusCmdWR := True
         dBusCmdAddr := addrDest
@@ -201,10 +202,10 @@ class SetInterPlugin extends Plugin[VexRiscv] {
         state := State.F
       }
 
-      when (state === State.F) {
+      when(state === State.F) {
         dBusCmdValid := False
 
-        when (dBus.cmd.ready) {
+        when(dBus.cmd.ready) {
           state := State.IDLE
           decode.arbitration.haltByOther := False
           execute.arbitration.haltItself := False

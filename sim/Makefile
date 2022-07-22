@@ -18,7 +18,7 @@ gensim: genv
 	verilator --trace -cc ../SetChip.v --exe testbench-soc.cpp $(VERILATOR_FLAGS)
 
 compile: gensim
-	make -C obj_dir -f VSetChip.mk
+	make -C obj_dir -f VSetChip.mk -j 32
 
 run: compile
 	./obj_dir/VSetChip
