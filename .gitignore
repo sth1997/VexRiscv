@@ -57,3 +57,6 @@ tmp/
 .bloop/
 .metals/
 project/
+
+# idea
+*.iml
