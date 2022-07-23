@@ -5,7 +5,7 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
-#define MAX_SIM_TIME 500
+#define MAX_SIM_TIME 10000
 vluint64_t sim_time = 0;
 
 VSetChip *top = nullptr;

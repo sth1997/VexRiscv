@@ -1,10 +1,14 @@
 VERILATOR_FLAGS=-Wno-WIDTH
 
-baz.o: baz.s
+baz.o: baz.c
+	clang -c $< -o $@ -march=rv32i
+#	llvm-mc $< --filetype=obj -o $@
+
+crt.o: crt.s
 	llvm-mc $< --filetype=obj -o $@
 
-baz.elf: baz.o
-	ld.lld -T linker.ld $< -o $@
+baz.elf: baz.o crt.o
+	ld.lld -T linker.ld $^ -o $@ libclang_rt.builtins-riscv32.a
 
 baz.hex: baz.elf
 	llvm-objcopy -O ihex $< $@
