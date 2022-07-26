@@ -4,8 +4,8 @@
 
     .section	.start_jump,"ax",@progbits
 crtStart:
-  //long jump to allow crtInit to be anywhere
-  //do it always in 12 bytes
+  #long jump to allow crtInit to be anywhere
+  #do it always in 12 bytes
   lui x2,       %hi(crtInit)
   addi x2, x2,  %lo(crtInit)
   jalr x1,x2
@@ -88,9 +88,9 @@ ctors_done:
   addi sp,sp,4
 
 
-  li a0, 0x880     //880 enable timer + external interrupts
+  li a0, 0x880     #880 enable timer + external interrupts
   csrw mie,a0
-  li a0, 0x1808     //1808 enable interrupts
+  li a0, 0x1808    #1808 enable interrupts
   csrw mstatus,a0
 
   call main

@@ -1,8 +1,8 @@
 VERILATOR_FLAGS=-Wno-WIDTH
 
-baz.o: baz.c
-	clang -c $< -o $@ -march=rv32i
-#	llvm-mc $< --filetype=obj -o $@
+baz.o: baz.s
+#	clang -c $< -o $@ -march=rv32i
+	llvm-mc $< --filetype=obj -o $@
 
 crt.o: crt.s
 	llvm-mc $< --filetype=obj -o $@

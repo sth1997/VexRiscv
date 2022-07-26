@@ -1,6 +1,7 @@
 	.text
 	.attribute	4, 16
-	.attribute	5, "rv32i2p0_set1p0"
+	#.attribute	5, "rv32i2p0_set1p0"
+	.attribute	5, "rv32i2p0"
 	.file	"baz.c"
 	.globl	clear                           # -- Begin function clear
 	.p2align	2
@@ -103,9 +104,7 @@ main:                                   # @main
 	lui	a0, %hi(G)
 	addi	a0, a0, %lo(G)
 	add	a0, a0, a1
-#	setcount	a0, a0
-	li  a0, 2
-	nop
+	#setcount	a0, a0
 	nop
 	sw	a0, -24(s0)
 	li	a0, 0
@@ -151,8 +150,8 @@ main:                                   # @main
 	add	a2, a0, a2
 	lui	a0, %hi(tmp)
 	addi	a0, a0, %lo(tmp)
-	setinter	a0, a1, a2
-	setcount	a1, a0
+	#setinter	a0, a1, a2
+	#setcount	a1, a0
 	nop
 	nop
 	lw	a0, -16(s0)
@@ -216,7 +215,7 @@ tmp:
 
 	.ident	"clang version 15.0.0 (https://github.com/llvm/llvm-project.git 32d110b9eae0dffade27152b5bb14d1e95ab963a)"
 	.section	".note.GNU-stack","",@progbits
-	.addrsig
-	.addrsig_sym clear
-	.addrsig_sym G
-	.addrsig_sym tmp
+	#.addrsig
+	#.addrsig_sym clear
+	#.addrsig_sym G
+	#.addrsig_sym tmp
