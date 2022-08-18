@@ -21,7 +21,8 @@ class SetCountPlugin extends Plugin[VexRiscv] {
       key = M"0000010----------110-----0001011",
       List(
         IS_SETCOUNT -> True,
-        REGFILE_WRITE_VALID -> True
+        REGFILE_WRITE_VALID -> True,
+        RS1_USE -> True
       )
     )
   }
@@ -30,6 +31,15 @@ class SetCountPlugin extends Plugin[VexRiscv] {
     import pipeline._
     import pipeline.config._
 
+    execute plug new Area {
+      import execute._
+
+      when (input(IS_SETCOUNT)) {
+        output(REGFILE_WRITE_DATA) := input(SR1_CNT).asBits
+      }
+    }
+
+/*
     val dBus = pipeline.plugins.filter(_.isInstanceOf[DBusSimplePlugin]).head.asInstanceOf[DBusSimplePlugin].dBus
 
     execute.plug(new Area {
@@ -101,5 +111,7 @@ class SetCountPlugin extends Plugin[VexRiscv] {
         execute.arbitration.haltItself := False
       }
     })
+
+*/
   }
 }

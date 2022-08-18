@@ -1,22 +1,21 @@
 VERILATOR_FLAGS=-Wno-WIDTH
 
+GENV=../SetChip.v
+
 baz.o: baz.s
-#	clang -c $< -o $@ -march=rv32i
+	clang -c $< -o $@ -march=rv32i
 	llvm-mc $< --filetype=obj -o $@
 
-crt.o: crt.s
-	llvm-mc $< --filetype=obj -o $@
-
-baz.elf: baz.o crt.o
+baz.elf: baz.o
 	ld.lld -T linker.ld $^ -o $@ libclang_rt.builtins-riscv32.a
 
 baz.hex: baz.elf
 	llvm-objcopy -O ihex $< $@
 
-genv: baz.hex
+$(GENV): baz.hex
 	cd ..; sbt "runMain set.Gen"
 
-gensim: genv
+gensim: $(GENV)
 	rm -f SetChip.v*.bin
 	cp ../SetChip.v*.bin . | true
 	verilator --trace -cc ../SetChip.v --exe testbench-soc.cpp $(VERILATOR_FLAGS)

@@ -189,6 +189,9 @@ class SetChip extends Component {
           new SetInterPlugin,
           new SetCountPlugin,
           new SetDiffPlugin,
+          //new SetLoadPlugin,
+          //new SetFreePlugin,
+          new SetTablePlugin(size = 16),
           new YamlPlugin("cpu0.yaml")
       )
     ))

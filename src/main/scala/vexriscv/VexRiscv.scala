@@ -53,6 +53,16 @@ case class VexRiscvConfig(){
     case None => false
   }
 
+  // set operation
+  object SR1_ADDR extends Stageable(UInt(32 bits))
+  object SR1_CNT  extends Stageable(UInt(32 bits))
+  object SR2_ADDR extends Stageable(UInt(32 bits))
+  object SR2_CNT  extends Stageable(UInt(32 bits))
+  object SR0_ADDR extends Stageable(UInt(32 bits))
+  object SR0_RAW_ID extends Stageable(UInt(4 bits))
+  object SR0_NEW_CNT extends Stageable(UInt(32 bits))
+  object SR0_REWRITE_VALID extends Stageable(Bool)
+
   //Default Stageables
   object IS_RVC extends Stageable(Bool)
   object BYPASSABLE_EXECUTE_STAGE   extends Stageable(Bool)
