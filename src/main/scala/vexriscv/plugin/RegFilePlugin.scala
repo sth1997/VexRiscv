@@ -30,6 +30,7 @@ class RegFilePlugin(regFileReadyKind : RegFileReadKind,
     val decoderService = pipeline.service(classOf[DecoderService])
     decoderService.addDefault(RS1_USE,False)
     decoderService.addDefault(RS2_USE,False)
+    decoderService.addDefault(RD_USE, False)
     decoderService.addDefault(REGFILE_WRITE_VALID,False)
   }
 
@@ -81,6 +82,7 @@ class RegFilePlugin(regFileReadyKind : RegFileReadKind,
       def shadowPrefix(that : Bits) = if(withShadow) global.shadow.read ## that else that
       val regFileReadAddress1 = U(shadowPrefix(srcInstruction(clipRange(Riscv.rs1Range))))
       val regFileReadAddress2 = U(shadowPrefix(srcInstruction(clipRange(Riscv.rs2Range))))
+      val regFileReadAddressd = U(shadowPrefix(srcInstruction(clipRange(Riscv.rdRange))))
 
       val (rs1Data,rs2Data) = regFileReadyKind match{
         case `ASYNC` => (global.regFile.readAsync(regFileReadAddress1),global.regFile.readAsync(regFileReadAddress2))
@@ -89,8 +91,44 @@ class RegFilePlugin(regFileReadyKind : RegFileReadKind,
           (global.regFile.readSync(regFileReadAddress1, enable),global.regFile.readSync(regFileReadAddress2, enable))
       }
 
+      val rdData = global.regFile.readSync(regFileReadAddressd, if(!syncUpdateOnStall) !readStage.arbitration.isStuck else null)
+
       insert(RS1) := rs1Data
       insert(RS2) := rs2Data
+      insert(RD) := rdData
+    }
+
+    execute plug new Area {
+      import execute._
+
+      assert(!readInExecute)
+
+      //read register file
+      val srcInstruction = regFileReadyKind match{
+        case `ASYNC` => input(INSTRUCTION)
+        case `SYNC` => input(INSTRUCTION)
+      }
+
+      def shadowPrefix(that : Bits) = if(withShadow) global.shadow.read ## that else that
+      val regFileReadAddress1 = U(shadowPrefix(srcInstruction(clipRange(Riscv.rs1Range))))
+      val regFileReadAddress2 = U(shadowPrefix(srcInstruction(clipRange(Riscv.rs2Range))))
+      val regFileReadAddressd = U(shadowPrefix(srcInstruction(clipRange(Riscv.rdRange))))
+
+      val (rs1Data,rs2Data,rdData) = regFileReadyKind match{
+        case `ASYNC` =>
+          (global.regFile.readAsync(regFileReadAddress1),
+           global.regFile.readAsync(regFileReadAddress2),
+           global.regFile.readAsync(regFileReadAddressd))
+        case `SYNC` =>
+          val enable = if(!syncUpdateOnStall) !execute.arbitration.isStuck else null
+          (global.regFile.readSync(regFileReadAddress1, enable),
+           global.regFile.readSync(regFileReadAddress2, enable),
+           global.regFile.readSync(regFileReadAddressd, enable))
+      }
+
+      insert(RS1_E) := rs1Data
+      insert(RS2_E) := rs2Data
+      insert(RD_E) := rdData
     }
 
     //Write register file

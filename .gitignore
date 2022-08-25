@@ -52,3 +52,11 @@ simWorkspace/
 tmp/
 /archive.tar.gz
 *.out32
+
+# language server
+.bloop/
+.metals/
+project/
+
+# idea
+*.iml
