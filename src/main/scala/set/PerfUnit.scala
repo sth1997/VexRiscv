@@ -47,15 +47,15 @@ class SetPerfUnitPlugin(base: BigInt, membusCfg: PipelinedMemoryBusConfig) exten
 
   // Dummy build
   override def build(pipeline: VexRiscv): Unit = {
-    bus = slave(PipelinedMemoryBus(membusCfg))
+    bus = slave(PipelinedMemoryBus(membusCfg)).setName("PerfUnit__bus")
 
-    val enabled = RegInit(False)
-    val clear = False
+    val enabled = RegInit(False).setName("PerfUnit__enabled")
+    val clear = False.setName("PerfUnit__clear")
 
     // Create all mapping
-    storage = SetPerfUnit.counters.map((counter) => counter -> RegInit(U(0, 64 bits)).setName(counter)).toMap
-    incremented = storage.map({ case (n, s) => n -> UInt(64 bits).setName(s"${n}__incremented") })
-    val written: Map[String, UInt] = incremented.map({ case (n, i) => n -> UInt(64 bits).setName(s"${n}__written") })
+    storage = SetPerfUnit.counters.map((counter) => counter -> RegInit(U(0, 64 bits)).setName(s"PerfUnit__${counter}")).toMap
+    incremented = storage.map({ case (n, s) => n -> UInt(64 bits).setName(s"PerfUnit__${n}__incremented") })
+    val written: Map[String, UInt] = incremented.map({ case (n, i) => n -> UInt(64 bits).setName(s"PerfUnit__${n}__written") })
 
     for(n <- SetPerfUnit.counters) {
       incremented(n) := storage(n)
