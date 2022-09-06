@@ -147,6 +147,9 @@ class SetChip extends Component {
     val cpu = new VexRiscv(
       config = VexRiscvConfig(
         plugins = List(
+          new StaticMemoryTranslatorPlugin(
+            ioRange = _(31 to 28) === 0xF
+          ),
           new IBusSimplePlugin(
             resetVector = 0x80000000l,
             cmdForkOnSecondStage = false,
@@ -186,6 +189,7 @@ class SetChip extends Component {
             earlyBranch = false,
             catchAddressMisaligned = false
           ),
+          new SetPerfUnitPlugin(0xF1000000, pipelinedMemoryBusConfig),
           new SetInterPlugin,
           new SetCountPlugin,
           new SetDiffPlugin,
@@ -196,6 +200,7 @@ class SetChip extends Component {
       )
     ))
 
+    var puBus: PipelinedMemoryBus = null
     for (plugin <- cpu.plugins) plugin match {
       case plugin: IBusSimplePlugin =>
         mainBusArbiter.io.iBus.cmd <> plugin.iBus.cmd
@@ -203,6 +208,8 @@ class SetChip extends Component {
       case plugin: DBusSimplePlugin =>
         mainBusArbiter.io.dBus.cmd << plugin.dBus.cmd.halfPipe()
         mainBusArbiter.io.dBus.rsp <> plugin.dBus.rsp
+      case plugin: SetPerfUnitPlugin =>
+        puBus = plugin.bus
       case _ =>
     }
 
@@ -222,6 +229,7 @@ class SetChip extends Component {
       pipelinedMemoryBusConfig = pipelinedMemoryBusConfig
     )
     mainBusMapping += ram.io.bus -> (0x80000000l, 4 kB)
+    mainBusMapping += puBus -> (0xF1000000l, 0x2000.toBigInt)
 
     val mainBusDecoder = new Area {
       val logic = new SetChipPipelinedMemoryBusDecoder(

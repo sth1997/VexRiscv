@@ -33,6 +33,7 @@ class SetDiffPlugin extends Plugin[VexRiscv] {
     import pipeline.config._
 
     val dBus = pipeline.plugins.filter(_.isInstanceOf[DBusSimplePlugin]).head.asInstanceOf[DBusSimplePlugin].dBus
+    val perfUnit = pipeline.service(classOf[SetPerfUnitService])
 
     execute plug new Area {
 
@@ -54,6 +55,7 @@ class SetDiffPlugin extends Plugin[VexRiscv] {
           state := State.P
           decode.arbitration.haltByOther := True
           execute.arbitration.haltItself := True
+          perfUnit.trigger("setdiff-instexec")
         }
       }
 

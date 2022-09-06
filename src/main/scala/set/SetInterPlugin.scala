@@ -37,6 +37,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
 
     val dBus = pipeline.plugins.filter(_.isInstanceOf[DBusSimplePlugin]).head.asInstanceOf[DBusSimplePlugin].dBus
     // val regFile = pipeline.plugins.filter(_.isInstanceOf[RegFilePlugin]).head.asInstanceOf[RegFilePlugin]
+    val perfUnit = pipeline.service(classOf[SetPerfUnitService])
 
     // execute.arbitration.haltItself := True
 
@@ -75,6 +76,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
           state := State.P
           decode.arbitration.haltByOther := True
           execute.arbitration.haltItself := True
+          perfUnit.trigger("setinter-instexec")
         }
       }
 
