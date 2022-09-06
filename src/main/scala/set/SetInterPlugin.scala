@@ -76,7 +76,7 @@ class SetInterPlugin extends Plugin[VexRiscv] {
           state := State.P
           decode.arbitration.haltByOther := True
           execute.arbitration.haltItself := True
-          perfUnit.trigger("setinter-instexec")
+          perfUnit.trigger("setinter_instexec")
         }
       }
 

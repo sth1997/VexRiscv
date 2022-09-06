@@ -55,7 +55,7 @@ class SetDiffPlugin extends Plugin[VexRiscv] {
           state := State.P
           decode.arbitration.haltByOther := True
           execute.arbitration.haltItself := True
-          perfUnit.trigger("setdiff-instexec")
+          perfUnit.trigger("setdiff_instexec")
         }
       }
 

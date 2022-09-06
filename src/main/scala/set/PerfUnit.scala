@@ -11,8 +11,8 @@ import vexriscv.VexRiscv
 object SetPerfUnit {
   // 64-bit
   val counters: Seq[String] = Seq(
-    "setinter-instexec",
-    "setdiff-instexec"
+    "setinter_instexec",
+    "setdiff_instexec"
   )
 
   val addrLen = log2Up(0x2000)
@@ -54,8 +54,8 @@ class SetPerfUnitPlugin(base: BigInt, membusCfg: PipelinedMemoryBusConfig) exten
 
     // Create all mapping
     storage = SetPerfUnit.counters.map((counter) => counter -> RegInit(U(0, 64 bits)).setName(counter)).toMap
-    incremented = storage.map({ case (n, s) => n -> UInt(64 bits).setName(s"${n}+incremented") })
-    val written: Map[String, UInt] = incremented.map({ case (n, i) => n -> UInt(64 bits).setName(s"${n}+written") })
+    incremented = storage.map({ case (n, s) => n -> UInt(64 bits).setName(s"${n}__incremented") })
+    val written: Map[String, UInt] = incremented.map({ case (n, i) => n -> UInt(64 bits).setName(s"${n}__written") })
 
     for(n <- SetPerfUnit.counters) {
       incremented(n) := storage(n)
