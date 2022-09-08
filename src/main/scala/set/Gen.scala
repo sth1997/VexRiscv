@@ -95,7 +95,7 @@ class SetChip extends Component {
             earlyBranch = false,
             catchAddressMisaligned = false
           ),
-          new SetTablePlugin(size = 16),
+          new SetInstPlugin(size = 16),
           new YamlPlugin("cpu0.yaml")
         )
       )
@@ -103,9 +103,11 @@ class SetChip extends Component {
 
     var iBus: Axi4ReadOnly = null
     var dBus: Axi4Shared = null
+    var sBus: Axi4Shared = null
     for (plugin <- cpu.plugins) plugin match {
       case plugin: IBusSimplePlugin => iBus = plugin.iBus.toAxi4ReadOnly()
       case plugin: DBusSimplePlugin => dBus = plugin.dBus.toAxi4Shared()
+      case plugin: SetInstPlugin    => sBus = plugin.sBus
       case _                        =>
     }
 
@@ -120,7 +122,8 @@ class SetChip extends Component {
     )
     axiCrossbar.addConnections(
       iBus -> List(ramAxi.axi),
-      dBus -> List(ramAxi.axi)
+      dBus -> List(ramAxi.axi),
+      sBus -> List(ramAxi.axi)
     )
     axiCrossbar.addPipelining(ramAxi.axi)((crossbar, ctrl) => {
       crossbar.sharedCmd.halfPipe() >> ctrl.sharedCmd

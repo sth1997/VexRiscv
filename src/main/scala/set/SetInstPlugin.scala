@@ -9,7 +9,7 @@ import vexriscv.plugin._
 
 class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
 
-  val sBus: Axi4Shared = null
+  var sBus: Axi4Shared = null
 
   object SetOp extends SpinalEnum {
     val NOP, LOAD, FREE, COUNT, DIFF, INTER, UNION = newElement()
@@ -64,6 +64,8 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
   override def build(pipeline: VexRiscv): Unit = {
     import pipeline._
     import pipeline.config._
+
+    sBus = Axi4Shared(Axi4Config(32, 32, 2))
 
     val setTable = new Area {
       // val table = Mem(SetTableEntry(), size) addAttribute(Verilator.public)
