@@ -15,8 +15,6 @@
 
 vluint64_t sim_time = 0;
 
-VSetChip *top = nullptr;
-
 const uint32_t RAM_BASE = 0x80000000ul;
 
 const int RND_SEED = 19260817;
@@ -33,10 +31,13 @@ public:
       memory[RAM_BASE + i] = payload[i];
   }
 
-  void write(uint32_t addr, uint32_t data, uint8_t we) {
+  // Returns true on shutdown
+  std::optional<uint8_t> write(uint32_t addr, uint32_t data, uint8_t we) {
     if(addr == 0xf0000000ul) { // Serial write
       char c = data & 0xFF;
       putchar(c);
+    } else if(addr == 0xFF000000ul) { // Shutdown request
+      return { data & 0xFF };
     } else if(addr >= 0x80000000ul && addr < 0x80400000ul) {
       for(size_t i = 0; i < 4; ++i) {
         size_t effective_i = (addr + i) % 4;
@@ -44,6 +45,8 @@ public:
         memory[i + addr] = (data >> (effective_i * 8)) & 0xFF;
       }
     }
+
+    return {};
   }
 
   uint32_t read(uint32_t addr) {
@@ -74,6 +77,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  std::unique_ptr<VSetChip> top = std::make_unique<VSetChip>();
+
   MemBus mem;
   if(argc == 2) {
     std::ifstream file(argv[1], std::ios::binary);
@@ -93,8 +98,6 @@ int main(int argc, char *argv[]) {
   Verilated::traceEverOn(true);
   VerilatedVcdC *trace = new VerilatedVcdC;
 
-  top = new VSetChip;
-
   top->trace(trace, 5);
   trace->open("waveform.vcd");
 
@@ -113,9 +116,15 @@ int main(int argc, char *argv[]) {
     if(top->clk == 0) { // Negedge, handle requests
       read_resp = {};
       if(top->io_mem_cmd_valid) {
-        if(top->io_mem_cmd_payload_write)
-          mem.write(top->io_mem_cmd_payload_address, top->io_mem_cmd_payload_data, top->io_mem_cmd_payload_mask);
-        else
+        if(top->io_mem_cmd_payload_write) {
+          auto shutdown = mem.write(top->io_mem_cmd_payload_address, top->io_mem_cmd_payload_data, top->io_mem_cmd_payload_mask);
+          if(shutdown.has_value()) {
+            std::cout<<"Voluntarily exited with exit code "<<std::dec<<(*shutdown & 0xFF)<<std::endl;
+            trace->dump(sim_time);
+            trace->close();
+            return *shutdown;
+          }
+        } else
           read_resp = { mem.read(top->io_mem_cmd_payload_address) };
       }
     } else { // Posedge, write back data
@@ -124,14 +133,13 @@ int main(int argc, char *argv[]) {
     }
 
     top->eval();
-
     trace->dump(sim_time);
 
     sim_time++;
   }
 
   trace->close();
-  delete top;
+  std::cout<<"Simulation timeout"<<std::endl;
 
   return 0;
 }

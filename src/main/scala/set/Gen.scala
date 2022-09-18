@@ -237,7 +237,8 @@ class SetChip extends Component {
     mainBusMapping += puBus -> Seq(SizeMapping(0xF1000000l, 0x2000.toBigInt))
     mainBusMapping += io.mem -> Seq(
       SizeMapping(0x80000000l, 4 MB), // RAM
-      SizeMapping(0xF0000000l, 4 kB) // Memory
+      SizeMapping(0xF0000000l, 4 kB), // Serial
+      SizeMapping(0xFF000000l, 4 kB) // Shutdown
     )
 
     val mainBusDecoder = new Area {
