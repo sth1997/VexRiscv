@@ -39,8 +39,9 @@ public:
       putchar(c);
     } else if(addr >= 0x80000000ul && addr < 0x80400000ul) {
       for(size_t i = 0; i < 4; ++i) {
-        if(((we >> i) & 1) == 0) continue;
-        memory[i + addr] = (data >> (i * 8)) & 0xFF;
+        size_t effective_i = (addr + i) % 4;
+        if(((we >> effective_i) & 1) == 0) continue;
+        memory[i + addr] = (data >> (effective_i * 8)) & 0xFF;
       }
     }
   }
@@ -49,6 +50,8 @@ public:
     if(addr >= 0x80000000ul && addr < 0x80400000ul) {
       uint32_t collected = 0;
       for(size_t i = 0; i < 4; ++i) {
+        size_t effective_i = (addr + i) % 4;
+
         auto lookup = memory.find(addr + i);
         uint8_t readout;
         if(lookup == memory.end()) {
@@ -56,7 +59,7 @@ public:
           memory[addr + i] = readout;
         } else readout = lookup->second;
 
-        collected |= ((uint32_t) readout) << (i * 8);
+        collected |= ((uint32_t) readout) << (effective_i * 8);
       }
       return collected;
     }
