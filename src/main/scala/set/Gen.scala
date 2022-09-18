@@ -9,6 +9,10 @@ import vexriscv._
 import vexriscv.plugin._
 
 import scala.collection.mutable.ArrayBuffer
+import spinal.lib.bus.misc.AddressMapping
+import spinal.lib.wishbone.sim.AddressRange
+import scala.collection.DefaultMap
+import spinal.lib.bus.misc.DefaultMapping
 
 class SetChipMasterArbiter(pipelinedMemoryBusConfig : PipelinedMemoryBusConfig) extends Component {
   val io = new Bundle {
@@ -68,7 +72,7 @@ case class SetChipPipelinedMemoryBusRam(onChipRamSize : BigInt, onChipRamHexFile
   }
 }
 
-class SetChipPipelinedMemoryBusDecoder(master : PipelinedMemoryBus, val specification : Seq[(PipelinedMemoryBus,SizeMapping)], pipelineMaster : Boolean) extends Area{
+class SetChipPipelinedMemoryBusDecoder(master : PipelinedMemoryBus, val specification : Seq[(PipelinedMemoryBus, Seq[AddressMapping])], pipelineMaster : Boolean) extends Area{
   val masterPipelined = PipelinedMemoryBus(master.config)
   if(!pipelineMaster) {
     masterPipelined.cmd << master.cmd
@@ -82,7 +86,8 @@ class SetChipPipelinedMemoryBusDecoder(master : PipelinedMemoryBus, val specific
   val memorySpaces = specification.map(_._2)
 
   val hits = for((slaveBus, memorySpace) <- specification) yield {
-    val hit = memorySpace.hit(masterPipelined.cmd.address)
+    // We don't support DefaultMapping
+    val hit = Vec(memorySpace.map(_.hit(masterPipelined.cmd.address))).orR
     slaveBus.cmd.valid   := masterPipelined.cmd.valid && hit
     slaveBus.cmd.payload := masterPipelined.cmd.payload.resized
     hit
@@ -103,9 +108,17 @@ class SetChipPipelinedMemoryBusDecoder(master : PipelinedMemoryBus, val specific
 }
 
 class SetChip extends Component {
+  // Shared memory bus config for the entire core
+  val pipelinedMemoryBusConfig = PipelinedMemoryBusConfig(
+    addressWidth = 32,
+    dataWidth = 32
+  )
+
+
   val io = new Bundle {
     val asyncReset = in Bool()
     val mainClk = in Bool()
+    val mem = master(PipelinedMemoryBus(pipelinedMemoryBusConfig))
   }
 
   val resetCtrlClockDomain = ClockDomain(
@@ -137,11 +150,6 @@ class SetChip extends Component {
   )
 
   // val system = new ClockingArea(systemClockDomain) {
-    val pipelinedMemoryBusConfig = PipelinedMemoryBusConfig(
-      addressWidth = 32,
-      dataWidth = 32
-    )
-
     val mainBusArbiter = new SetChipMasterArbiter(pipelinedMemoryBusConfig)
 
     val cpu = new VexRiscv(
@@ -213,23 +221,27 @@ class SetChip extends Component {
       case _ =>
     }
 
-    // val timerInterrupt = False
-    // val externalInterrupt = False
-    // for (plugin <- cpu.plugins) plugin match {
-    //   case plugin: CsrPlugin =>
-    //     plugin.externalInterrupt := externalInterrupt
-    //     plugin.timerInterrupt := timerInterrupt
-    //   case _ =>
-    // }
+    // Meow: Re-enabled this part because the compilation suddenly failed
+    // TODO: why?
+    val timerInterrupt = False
+    val externalInterrupt = False
+    for (plugin <- cpu.plugins) plugin match {
+      case plugin: CsrPlugin =>
+        plugin.externalInterrupt := externalInterrupt
+        plugin.timerInterrupt := timerInterrupt
+      case _ =>
+    }
 
-    val mainBusMapping = ArrayBuffer[(PipelinedMemoryBus, SizeMapping)]()
+    val mainBusMapping = ArrayBuffer[(PipelinedMemoryBus, Seq[AddressMapping])]()
     val ram = new SetChipPipelinedMemoryBusRam(
       onChipRamSize = 4 kB,
       onChipRamHexFile = "sim/baz.hex",
       pipelinedMemoryBusConfig = pipelinedMemoryBusConfig
     )
-    mainBusMapping += ram.io.bus -> (0x80000000l, 4 kB)
-    mainBusMapping += puBus -> (0xF1000000l, 0x2000.toBigInt)
+
+    mainBusMapping += ram.io.bus -> Seq(SizeMapping(0x80000000l, 4 kB))
+    mainBusMapping += puBus -> Seq(SizeMapping(0xF1000000l, 0x2000.toBigInt))
+    mainBusMapping += io.mem -> Seq(SizeMapping(0xF0000000l, 0x1000.toBigInt))
 
     val mainBusDecoder = new Area {
       val logic = new SetChipPipelinedMemoryBusDecoder(
