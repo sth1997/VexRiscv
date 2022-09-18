@@ -233,15 +233,12 @@ class SetChip extends Component {
     }
 
     val mainBusMapping = ArrayBuffer[(PipelinedMemoryBus, Seq[AddressMapping])]()
-    val ram = new SetChipPipelinedMemoryBusRam(
-      onChipRamSize = 4 kB,
-      onChipRamHexFile = "sim/baz.hex",
-      pipelinedMemoryBusConfig = pipelinedMemoryBusConfig
-    )
 
-    mainBusMapping += ram.io.bus -> Seq(SizeMapping(0x80000000l, 4 kB))
     mainBusMapping += puBus -> Seq(SizeMapping(0xF1000000l, 0x2000.toBigInt))
-    mainBusMapping += io.mem -> Seq(SizeMapping(0xF0000000l, 0x1000.toBigInt))
+    mainBusMapping += io.mem -> Seq(
+      SizeMapping(0x80000000l, 4 MB), // RAM
+      SizeMapping(0xF0000000l, 4 kB) // Memory
+    )
 
     val mainBusDecoder = new Area {
       val logic = new SetChipPipelinedMemoryBusDecoder(
