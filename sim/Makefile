@@ -1,5 +1,3 @@
-VERILATOR_FLAGS=-Wno-WIDTH
-
 GENV=../SetChip.v
 
 baz.o: baz.s
@@ -14,14 +12,3 @@ baz.hex: baz.elf
 
 $(GENV): baz.hex
 	cd ..; sbt "runMain set.Gen"
-
-gensim: $(GENV)
-	rm -f SetChip.v*.bin
-	cp ../SetChip.v*.bin . | true
-	verilator --trace -cc ../SetChip.v --exe testbench-soc.cpp $(VERILATOR_FLAGS)
-
-compile: gensim
-	make -C obj_dir -f VSetChip.mk -j 32
-
-run: compile
-	./obj_dir/VSetChip
