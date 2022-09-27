@@ -1,11 +1,13 @@
 package set
 
 import spinal.core._
+import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.misc.HexTools
 import vexriscv._
 import vexriscv.plugin._
+import spinal.core
 
 class SetChip extends Component {
   val io = new Bundle {
@@ -143,4 +145,15 @@ class SetChip extends Component {
 
 object Gen extends App {
   SpinalVerilog(new SetChip)
+}
+
+object SetSimulation extends App {
+  SimConfig.withVcdWave.compile(new SetChip).doSimUntilVoid { dut =>
+    {
+      val clockConfig = ClockDomainConfig(resetKind = core.SYNC)
+      ClockDomain(dut.io.mainClk, dut.io.asyncReset, config = clockConfig)
+        .forkStimulus(10)
+      SimTimeout(10000)
+    }
+  }
 }

@@ -1,4 +1,5 @@
 *.elf
 *.o
 *.bin
+*.hex
 dump.s
