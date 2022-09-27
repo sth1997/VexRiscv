@@ -78,7 +78,15 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
         Axi4Config(
           addressWidth = 32,
           dataWidth = 32,
-          useId = false
+          useId = false,
+          useRegion = false,
+          useBurst = false,
+          useLock = false,
+          useQos = false,
+          useLen = false,
+          useResp = true,
+          useSize = false,
+          useStrb = false
         )
       )
     )
@@ -137,13 +145,12 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
 
     memory plug new Area {
       import memory._
+      import setTable._
 
       // AXI4 Helper
       sBus.arw.valid := False
       sBus.arw.write := False
       sBus.arw.addr := U(0)
-      sBus.arw.size := U(4)
-      sBus.arw.len := U(0)
 
       sBus.r.ready := False
 

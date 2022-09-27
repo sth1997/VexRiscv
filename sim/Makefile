@@ -1,16 +1,32 @@
-VERILATOR_FLAGS=-Wno-WIDTH
+SRCS = 	$(wildcard *.c) \
+		$(wildcard *.cpp)  \
+		$(wildcard *.s)
 
-GENV=../SetChip.v
+OBJS := $(SRCS)
+OBJS := $(OBJS:.c=.o)
+OBJS := $(OBJS:.cpp=.o)
+OBJS := $(OBJS:.s=.o)
 
-baz.o: baz.c
+all: main.asm main.hex
+
+%.o: %.c
 	clang -c $< -o $@ -march=rv32i
 
-crt.o: crt.s
+%.o: %.s
 	llvm-mc $< --filetype=obj -o $@
 
-baz.elf: baz.o crt.o
-	ld.lld -T linker.ld $^ -o $@ libclang_rt.builtins-riscv32.a
-	llvm-objdump --disassemble-all $@ > dump.s
+%.elf: $(OBJS)
+	ld.lld -T linker.ld -o $@ $^ libclang_rt.builtins-riscv32.a
 
-baz.hex: baz.elf
-	llvm-objcopy -O ihex $< $@
+%.hex: %.elf
+	llvm-objcopy -O ihex $^ $@
+
+%.asm: %.elf
+	llvm-objdump -S -d $^ > $@
+
+.PHONY: clean
+clean:
+	rm -f *.o
+	rm -f *.elf
+	rm -f *.hex
+	rm -f *.asm

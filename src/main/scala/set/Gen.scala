@@ -3,16 +3,25 @@ package set
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
+import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.misc.HexTools
 import vexriscv._
 import vexriscv.plugin._
 import spinal.core
+import spinal.lib.com.uart.sim.{UartDecoder, UartEncoder}
+import spinal.lib.com.uart.{
+  Apb3UartCtrl,
+  Uart,
+  UartCtrlGenerics,
+  UartCtrlMemoryMappedConfig
+}
 
 class SetChip extends Component {
   val io = new Bundle {
     val asyncReset = in Bool ()
     val mainClk = in Bool ()
+    val uart = master(Uart())
   }
 
   val resetCtrlClockDomain = ClockDomain(
@@ -103,6 +112,20 @@ class SetChip extends Component {
       )
     )
 
+    val apbBridge = Axi4SharedToApb3Bridge(
+      addressWidth = 20,
+      dataWidth = 32,
+      idWidth = 4
+    )
+    val uartCtrl = Apb3UartCtrl(
+      UartCtrlMemoryMappedConfig(
+        uartCtrlConfig = UartCtrlGenerics(),
+        txFifoDepth = 32,
+        rxFifoDepth = 32
+      )
+    )
+    uartCtrl.io.apb.addAttribute(Verilator.public)
+
     var iBus: Axi4ReadOnly = null
     var dBus: Axi4Shared = null
     var sBus: Axi4Shared = null
@@ -110,23 +133,34 @@ class SetChip extends Component {
       case plugin: IBusSimplePlugin => iBus = plugin.iBus.toAxi4ReadOnly()
       case plugin: DBusSimplePlugin => dBus = plugin.dBus.toAxi4Shared()
       case plugin: SetInstPlugin    => sBus = plugin.sBus
+      case plugin: CsrPlugin  => {
+        plugin.timerInterrupt := False
+        plugin.externalInterrupt := False
+      }
       case _                        =>
     }
 
     val ram = Mem(Bits(32 bits), 1 kB)
-    HexTools.initRam(ram, "sim/baz.hex", 0x80000000L)
+    HexTools.initRam(ram, "sim/main.hex", 0x80000000L)
     val ramConfig = Axi4Config(32, 32, 2)
     val ramAxi = Axi4SharedOnChipRamPort(ramConfig, ram)
 
     val axiCrossbar = Axi4CrossbarFactory()
     axiCrossbar.addSlaves(
-      ramAxi.axi -> (0x80000000L, 4 kB)
+      ramAxi.axi -> (0x80000000L, 4 kB),
+      apbBridge.io.axi -> (0xf0000000L, 1 MB)
     )
     axiCrossbar.addConnections(
       iBus -> List(ramAxi.axi),
-      dBus -> List(ramAxi.axi),
+      dBus -> List(ramAxi.axi, apbBridge.io.axi),
       sBus -> List(ramAxi.axi)
     )
+    axiCrossbar.addPipelining(apbBridge.io.axi)((crossbar, bridge) => {
+      crossbar.sharedCmd.halfPipe() >> bridge.sharedCmd
+      crossbar.writeData.halfPipe() >> bridge.writeData
+      crossbar.writeRsp << bridge.writeRsp
+      crossbar.readRsp << bridge.readRsp
+    })
     axiCrossbar.addPipelining(ramAxi.axi)((crossbar, ctrl) => {
       crossbar.sharedCmd.halfPipe() >> ctrl.sharedCmd
       crossbar.writeData >/-> ctrl.writeData
@@ -140,7 +174,16 @@ class SetChip extends Component {
       cpu.readRsp <-< crossbar.readRsp // Data cache directly use read responses without buffering, so pipeline it for FMax
     })
     axiCrossbar.build()
+
+    val apbDecoder = Apb3Decoder(
+      master = apbBridge.io.apb,
+      slaves = List(
+        uartCtrl.io.apb -> (0x00000, 4 kB)
+      )
+    )
   }
+
+  io.uart <> soc.uartCtrl.io.uart
 }
 
 object Gen extends App {
@@ -148,12 +191,24 @@ object Gen extends App {
 }
 
 object SetSimulation extends App {
-  SimConfig.withVcdWave.compile(new SetChip).doSimUntilVoid { dut =>
+  SimConfig.allOptimisation.withVcdWave.compile(new SetChip).doSimUntilVoid { dut =>
     {
+      val mainClkPeriod = (1e12/(50 MHz).toDouble).toLong
+      val uartBaudRate = 115200
+      val uartBaudPeriod = (1e12/uartBaudRate).toLong
+
       val clockConfig = ClockDomainConfig(resetKind = core.SYNC)
       ClockDomain(dut.io.mainClk, dut.io.asyncReset, config = clockConfig)
-        .forkStimulus(10)
-      SimTimeout(10000)
+        .forkStimulus(mainClkPeriod)
+
+      val uartTx = UartDecoder(
+        uartPin = dut.io.uart.txd,
+        baudPeriod = uartBaudPeriod
+      )
+      val uartRx = UartEncoder(
+        uartPin = dut.io.uart.rxd,
+        baudPeriod = uartBaudPeriod
+      )
     }
   }
 }
