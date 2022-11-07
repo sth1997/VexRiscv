@@ -110,7 +110,7 @@ class SetChip extends Component {
             earlyBranch = false,
             catchAddressMisaligned = false
           ),
-          new SetPerfUnitPlugin(0xF1000000, Apb3Config(32, 32)),
+          new SetPerfUnitPlugin(0xF1000000),
           new SetInstPlugin(size = 16),
           new YamlPlugin("cpu0.yaml")
         )
@@ -194,7 +194,7 @@ class SetChip extends Component {
       master = apbBridge.io.apb,
       slaves = List(
         uartCtrl.io.apb -> (0x00000, 4 kB),
-        puBus -> (0xF1000000, 0x2000.toBigInt)
+        puBus -> (0x1000000, 0x2000.toBigInt)
       )
     )
   }

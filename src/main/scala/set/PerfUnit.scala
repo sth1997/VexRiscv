@@ -17,6 +17,11 @@ object SetPerfUnit {
   )
 
   val addrLen = log2Up(0x2000)
+
+  def apb3Config: Apb3Config = Apb3Config(
+    addrLen,
+    32
+  )
 }
 
 trait SetPerfUnitService {
@@ -40,7 +45,7 @@ trait SetPerfUnitService {
   * Memory region size = 0x2000
   *
   */
-class SetPerfUnitPlugin(base: BigInt, membusCfg: Apb3Config) extends SetPerfUnitService with Plugin[VexRiscv] {
+class SetPerfUnitPlugin(base: BigInt) extends SetPerfUnitService with Plugin[VexRiscv] {
   var bus: Apb3 = null
 
   var storage: Map[String, UInt] = null
@@ -48,7 +53,7 @@ class SetPerfUnitPlugin(base: BigInt, membusCfg: Apb3Config) extends SetPerfUnit
 
   // Dummy build
   override def build(pipeline: VexRiscv): Unit = {
-    bus = slave(Apb3(membusCfg)).setName("PerfUnit__bus")
+    bus = slave(Apb3(SetPerfUnit.apb3Config)).setName("PerfUnit__bus")
 
     val enabled = RegInit(False).setName("PerfUnit__enabled")
     val clear = False.setName("PerfUnit__clear")
