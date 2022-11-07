@@ -34,6 +34,7 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
     decoderService.addDefault(SET_OP, SetOp.NOP)
     decoderService.addDefault(SETD_WRITE, False)
 
+
     val useAll = List[(Stageable[_ <: BaseType], Any)](
       RS1_USE -> True,
       RS2_USE -> True,
@@ -96,6 +97,8 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
     }
 
     pipeline plug setTable
+
+    val perfUnit = pipeline.service(classOf[SetPerfUnitService])
 
     execute plug new Area {
       import execute._
@@ -319,6 +322,11 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
             arbitration.haltItself := False
             inited := False
             output(SETD_ENTRY).count := cCount
+
+            // Update perf unit
+            perfUnit.trigger("setdiff_instexec", Mux(opDiff, U(1), U(0)))
+            perfUnit.trigger("setinter_instexec", Mux(opInter, U(1), U(0)))
+            perfUnit.trigger("setunion_instexec", Mux(opInter, U(1), U(0)))
           }.elsewhen(!aValid && !aEnd) {
             axi4Read(aAddr, aValue) {
               aValid := True
