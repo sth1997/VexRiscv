@@ -16,6 +16,7 @@ import spinal.lib.com.uart.{
   UartCtrlGenerics,
   UartCtrlMemoryMappedConfig
 }
+import spinal.lib.bus.simple.PipelinedMemoryBus
 
 class SetChip extends Component {
   val io = new Bundle {
@@ -67,6 +68,9 @@ class SetChip extends Component {
     val cpu = new VexRiscv(
       config = VexRiscvConfig(
         plugins = List(
+          new StaticMemoryTranslatorPlugin(
+            ioRange = _(31 to 28) === 0xF
+          ),
           new IBusSimplePlugin(
             resetVector = 0x80000000L,
             cmdForkOnSecondStage = false,
@@ -110,13 +114,23 @@ class SetChip extends Component {
             size = 16,
             bitmapLen = 8
           ),
+          new SetPerfUnitPlugin(0xF1000000)
           new YamlPlugin("cpu0.yaml")
         )
       )
     )
 
+    // val timerInterrupt = False
+    // val externalInterrupt = False
+    // for (plugin <- cpu.plugins) plugin match {
+    //   case plugin: CsrPlugin =>
+    //     plugin.externalInterrupt := externalInterrupt
+    //     plugin.timerInterrupt := timerInterrupt
+    //   case _ =>
+    // }
+
     val apbBridge = Axi4SharedToApb3Bridge(
-      addressWidth = 20,
+      addressWidth = 28, // Drop most significant half (always F)
       dataWidth = 32,
       idWidth = 4
     )
@@ -151,7 +165,7 @@ class SetChip extends Component {
     val axiCrossbar = Axi4CrossbarFactory()
     axiCrossbar.addSlaves(
       ramAxi.axi -> (0x80000000L, 1 MB),
-      apbBridge.io.axi -> (0xf0000000L, 1 MB)
+      apbBridge.io.axi -> (0xf0000000L, 256 MB) // 0xF0000000 - 0xFFFFFFFF
     )
     axiCrossbar.addConnections(
       iBus -> List(ramAxi.axi),
@@ -178,10 +192,12 @@ class SetChip extends Component {
     })
     axiCrossbar.build()
 
+    val puBus: Apb3 = cpu.plugins.collect({ case e: SetPerfUnitPlugin => e }).head.bus
     val apbDecoder = Apb3Decoder(
       master = apbBridge.io.apb,
       slaves = List(
-        uartCtrl.io.apb -> (0x00000, 4 kB)
+        uartCtrl.io.apb -> (0x00000, 4 kB),
+        puBus -> (0x1000000, 0x2000.toBigInt)
       )
     )
   }
