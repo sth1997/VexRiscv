@@ -1,70 +1,84 @@
+#include "bcsr.h"
+#include "data.h"
+#include "print.h"
 #include "uart.h"
+#include <stdbool.h>
 
-int a[] = {1, 2, 3};
-int b[] = {2, 3, 4, 5};
-int c[10] = {0};
-int cnt = 0;
-
-#define UART      ((Uart_Reg*)(0xF0000000))
-
-void print(const char*str){
-	while(*str){
-		uart_write(UART,*str);
-		str++;
-	}
-}
-
-void println(const char*str){
-	print(str);
-	uart_write(UART,'\n');
-}
+#define UART ((Uart_Reg *)(0xF0000000))
 
 Uart_Config config = {
-  .clockDivider = 54,
-  .dataLength = 8,
-  .parity = NONE,
-  .stop = ONE
-};
-
-char* itoa(int value, char* result, int base) {
-    char* ptr = result, *ptr1 = result, tmp_char;
-    int tmp_value;
-
-    do {
-        tmp_value = value;
-        value /= base;
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
-    } while ( value );
-
-    // Apply negative sign
-    if (tmp_value < 0) *ptr++ = '-';
-    *ptr-- = '\0';
-    while(ptr1 < ptr) {
-        tmp_char = *ptr;
-        *ptr--= *ptr1;
-        *ptr1++ = tmp_char;
-    }
-    return result;
-}
+    .clockDivider = 54, .dataLength = 8, .parity = NONE, .stop = ONE};
 
 char buf[20];
 
+void put_char(char c) { uart_write(UART, c); }
+
+void setup() { uart_applyConfig(UART, &config); }
+
+void print_number(uint32_t num) {
+    print(itoa(num, buf, 10));
+    put_char(' ');
+}
+
+bool set_equal(uint32_t *set1, uint32_t set1_len, uint32_t *set2,
+               uint32_t set2_len) {
+    if (set1_len != set2_len) {
+        print("set len is not equal ");
+        print_number(set1_len);
+        print_number(set2_len);
+        println("");
+        return false;
+    }
+    for (int i = 0; i < set1_len; i++)
+        if (set1[i] != set2[i]) {
+            print("set ele is not equal");
+            print_number(i);
+            print_number(set1[i]);
+            print_number(set2[i]);
+            println("");
+            return false;
+        }
+    return true;
+}
+
+void print_set(const char *set_name, uint32_t set_id, uint32_t *set) {
+    print(set_name);
+    print(" Len: ");
+    int len = __builtin_set_count(set_id);
+    print_number(len);
+    print("Elements: ");
+    for (int i = 0; i < len; i++) {
+        print_number(set[i]);
+    }
+    println("");
+}
+
+uint32_t set_out[100];
+
 int main() {
-  uart_applyConfig(UART, &config);
+    setup();
 
-  __builtin_set_load(0, a, 3);
-  __builtin_set_load(1, b, 4);
-  __builtin_set_load(2, c, 0);
-  __builtin_set_diff(2, 1, 0);
+    __builtin_set_load(0, set_3_bcsr8, set_3_bcsr8_len);
+    __builtin_set_load(1, set_4_bcsr8, set_4_bcsr8_len);
+    __builtin_set_load(2, set_out, 0);
 
-  print("Diff count: ");
-  int count = __builtin_set_count(2);
-  println(itoa(count, buf, 10));
-  for(int i = 0;i<count;i++){
-    print(itoa(c[i], buf, 10));
-    print(" ");
-  }
-  println("");
+    __builtin_set_diff(2, 0, 1);
+    print("DIFF ");
+    if (set_equal(set_34_diff_bcsr8, set_34_diff_bcsr8_len, set_out,
+                  __builtin_set_count(2))) {
+        println("Passed");
+    } else {
+        println("Failed");
+    }
+
+    __builtin_set_inter(2, 0, 1);
+    print("INTER ");
+    if (set_equal(set_34_inter_bcsr8, set_34_inter_bcsr8_len, set_out,
+                  __builtin_set_count(2))) {
+        println("Passed");
+    } else {
+        println("Failed");
+    }
 }
 
 void irqCallback() {}

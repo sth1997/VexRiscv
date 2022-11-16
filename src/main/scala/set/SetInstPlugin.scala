@@ -8,7 +8,10 @@ import vexriscv._
 import vexriscv.plugin._
 import spinal.lib.fsm._
 
-class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
+class SetInstPlugin(
+    size: Int,
+    bitmapLen: Int = 0
+) extends Plugin[VexRiscv] {
 
   var sBus: Axi4Shared = null
 
@@ -139,7 +142,7 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
         insert(SETD_ENTRY).use := False
       }
       when(setOp === SetOp.COUNT) {
-        output(REGFILE_WRITE_DATA) := setd.count.asBits
+        output(REGFILE_WRITE_DATA) := set1.count.asBits
       }
     }
 
@@ -267,6 +270,11 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
         }
       }
 
+      val setOp = input(SET_OP)
+      val opDiff = setOp === SetOp.DIFF
+      val opInter = setOp === SetOp.INTER
+      val opUnion = setOp === SetOp.UNION
+
       val inited = RegInit(False)
       val aValid, bValid = RegInit(False)
       val aValue, bValue = RegInit(U(0, 32 bits))
@@ -277,6 +285,20 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
       val aAddr, bAddr, cAddr = RegInit(U(0, 32 bits))
       val aEnd = aCount === setA.count
       val bEnd = bCount === setB.count
+
+      val aBitmap: UInt = aValue(0 until bitmapLen)
+      val bBitmap: UInt = bValue(0 until bitmapLen)
+
+      val cBitmap = UInt(bitmapLen bits)
+      when(opDiff) { cBitmap := aBitmap & (~bBitmap) }
+        .elsewhen(opInter) { cBitmap := aBitmap & bBitmap }
+        .elsewhen(opUnion) { cBitmap := aBitmap | bBitmap }
+        .otherwise { cBitmap := 0 }
+
+      val aIndex: UInt = aValue(bitmapLen until 32)
+      val bIndex: UInt = bValue(bitmapLen until 32)
+
+      val cValue: UInt = aIndex @@ cBitmap
 
       def nextA() = {
         when(!aEnd) {
@@ -297,11 +319,6 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
         cCount := cCount + 1
       }
 
-      val setOp = input(SET_OP)
-      val opDiff = setOp === SetOp.DIFF
-      val opInter = setOp === SetOp.INTER
-      val opUnion = setOp === SetOp.UNION
-
       when((inited || arbitration.isValid) && (opDiff || opInter || opUnion)) {
         arbitration.haltItself := True
 
@@ -309,6 +326,11 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
           aAddr := setA.addr
           bAddr := setB.addr
           cAddr := setC.addr
+          aCount := 0
+          bCount := 0
+          cCount := 0
+          aEnd := False
+          bEnd := False
           inited := True
         }.otherwise {
           when(
@@ -338,7 +360,7 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
               nextC()
             }
           }.otherwise {
-            when(aValue < bValue) {
+            when(aIndex < bIndex) {
               when(opDiff || opUnion) {
                 axi4Write(cAddr, aValue) {
                   nextA()
@@ -347,7 +369,7 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
               }.otherwise {
                 nextA()
               }
-            }.elsewhen(aValue > bValue) {
+            }.elsewhen(aIndex > bIndex) {
               when(opUnion) {
                 axi4Write(cAddr, bValue) {
                   nextB()
@@ -357,20 +379,19 @@ class SetInstPlugin(size: Int) extends Plugin[VexRiscv] {
                 nextB()
               }
             }.otherwise {
-              when(opDiff) {
-                nextA()
-                nextB()
-              }.otherwise {
-                axi4Write(cAddr, aValue) {
+              when (cBitmap =/= U(0)) {
+                axi4Write(cAddr, cValue) {
                   nextA()
                   nextB()
                   nextC()
                 }
+              }.otherwise {
+                nextA()
+                nextB()
               }
             }
           }
         }
-
       }
     }
 

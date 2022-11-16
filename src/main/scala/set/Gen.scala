@@ -106,7 +106,10 @@ class SetChip extends Component {
             earlyBranch = false,
             catchAddressMisaligned = false
           ),
-          new SetInstPlugin(size = 16),
+          new SetInstPlugin(
+            size = 16,
+            bitmapLen = 8
+          ),
           new YamlPlugin("cpu0.yaml")
         )
       )
@@ -120,8 +123,8 @@ class SetChip extends Component {
     val uartCtrl = Apb3UartCtrl(
       UartCtrlMemoryMappedConfig(
         uartCtrlConfig = UartCtrlGenerics(),
-        txFifoDepth = 32,
-        rxFifoDepth = 32
+        txFifoDepth = 16,
+        rxFifoDepth = 16
       )
     )
     uartCtrl.io.apb.addAttribute(Verilator.public)
@@ -133,21 +136,21 @@ class SetChip extends Component {
       case plugin: IBusSimplePlugin => iBus = plugin.iBus.toAxi4ReadOnly()
       case plugin: DBusSimplePlugin => dBus = plugin.dBus.toAxi4Shared()
       case plugin: SetInstPlugin    => sBus = plugin.sBus
-      case plugin: CsrPlugin  => {
+      case plugin: CsrPlugin => {
         plugin.timerInterrupt := False
         plugin.externalInterrupt := False
       }
-      case _                        =>
+      case _ =>
     }
 
-    val ram = Mem(Bits(32 bits), 1 kB)
+    val ram = Mem(Bits(32 bits), 1 MB)
     HexTools.initRam(ram, "sim/main.hex", 0x80000000L)
     val ramConfig = Axi4Config(32, 32, 2)
     val ramAxi = Axi4SharedOnChipRamPort(ramConfig, ram)
 
     val axiCrossbar = Axi4CrossbarFactory()
     axiCrossbar.addSlaves(
-      ramAxi.axi -> (0x80000000L, 4 kB),
+      ramAxi.axi -> (0x80000000L, 1 MB),
       apbBridge.io.axi -> (0xf0000000L, 1 MB)
     )
     axiCrossbar.addConnections(
@@ -191,24 +194,28 @@ object Gen extends App {
 }
 
 object SetSimulation extends App {
-  SimConfig.allOptimisation.withVcdWave.compile(new SetChip).doSimUntilVoid { dut =>
-    {
-      val mainClkPeriod = (1e12/(50 MHz).toDouble).toLong
-      val uartBaudRate = 115200
-      val uartBaudPeriod = (1e12/uartBaudRate).toLong
+  SimConfig.allOptimisation.withVcdWave.compile(new SetChip).doSimUntilVoid {
+    dut =>
+      {
+        val mainClkPeriod = (1e12 / (50 MHz).toDouble).toLong
+        val uartBaudRate = 115200
+        val uartBaudPeriod = (1e12 / uartBaudRate).toLong
 
-      val clockConfig = ClockDomainConfig(resetKind = core.SYNC)
-      ClockDomain(dut.io.mainClk, dut.io.asyncReset, config = clockConfig)
-        .forkStimulus(mainClkPeriod)
+        val clock = ClockDomain(
+          dut.io.mainClk,
+          dut.io.asyncReset,
+          config = ClockDomainConfig(resetKind = core.SYNC)
+        )
+        clock.forkStimulus(mainClkPeriod)
 
-      val uartTx = UartDecoder(
-        uartPin = dut.io.uart.txd,
-        baudPeriod = uartBaudPeriod
-      )
-      val uartRx = UartEncoder(
-        uartPin = dut.io.uart.rxd,
-        baudPeriod = uartBaudPeriod
-      )
-    }
+        val uartTx = UartDecoder(
+          uartPin = dut.io.uart.txd,
+          baudPeriod = uartBaudPeriod
+        )
+        val uartRx = UartEncoder(
+          uartPin = dut.io.uart.rxd,
+          baudPeriod = uartBaudPeriod
+        )
+      }
   }
 }

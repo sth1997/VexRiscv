@@ -2,4 +2,5 @@
 *.o
 *.bin
 *.hex
+*.asm
 dump.s

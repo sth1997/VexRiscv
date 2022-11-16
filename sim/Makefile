@@ -1,6 +1,4 @@
-SRCS = 	$(wildcard *.c) \
-		$(wildcard *.cpp)  \
-		$(wildcard *.s)
+SRCS = main.c crt.s
 
 OBJS := $(SRCS)
 OBJS := $(OBJS:.c=.o)
