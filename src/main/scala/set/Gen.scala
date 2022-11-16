@@ -110,11 +110,11 @@ class SetChip extends Component {
             earlyBranch = false,
             catchAddressMisaligned = false
           ),
+          new SetPerfUnitPlugin(0xF1000000),
           new SetInstPlugin(
             size = 16,
             bitmapLen = 8
           ),
-          new SetPerfUnitPlugin(0xF1000000)
           new YamlPlugin("cpu0.yaml")
         )
       )
